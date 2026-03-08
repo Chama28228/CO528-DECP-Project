@@ -32,12 +32,15 @@
 | `app/jobs/page.tsx` | Job listing with keyword search, type filter, remote filter, Load More |
 | `app/jobs/[id]/page.tsx` | Job detail with Apply Externally button, deadline countdown, owner/admin actions |
 | `app/jobs/create/page.tsx` | Full job creation form (alumni/admin only) |
+| `app/jobs/[id]/edit/page.tsx` | Edit job form — pre-fills existing data, owner/admin only |
+| `app/profile/page.tsx` | Tabs (Posts / Job Postings) for alumni/admin; inline close, delete, edit actions on Jobs tab |
 
 ## Issues & Resolutions
 
 | # | Issue | Resolution |
 |---|-------|------------|
 | 1 | V1__create_jobs_table.sql was a placeholder from Phase 1 scaffold | Used V2__create_jobs_table.sql to avoid Flyway checksum conflict |
+| 2 | `lower(bytea) does not exist` PostgreSQL error on job search | Switched `JobRepository.searchJobs` to a native query with `CAST(:param AS text) IS NULL` to resolve type ambiguity |
 
 ## Decision Changes
 
@@ -47,5 +50,5 @@
 
 ## Pending Actions
 
-- Replace `REPLACE_WITH_ALUMNI_FIREBASE_UID` and `REPLACE_WITH_ADMIN_FIREBASE_UID` in `V999__seed_jobs.sql` with actual Firebase UIDs before running.
+- ~~Replace Firebase UIDs in `V999__seed_jobs.sql`~~ — done.
 - Make sure `job_db` database exists in PostgreSQL before starting the service.
