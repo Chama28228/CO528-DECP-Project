@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AppLayout from '@/components/layout/AppLayout';
@@ -13,6 +13,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   SEMINAR: 'Seminar', WORKSHOP: 'Workshop', SOCIAL: 'Social',
   CAREER_FAIR: 'Career Fair', ANNOUNCEMENT: 'Announcement', OTHER: 'Other',
 };
+const MAX_SIZE_MB = 5;
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -36,8 +37,9 @@ export default function CreateEventPage() {
 
 function CreateEventForm({ onCreated }: { onCreated: (id: string) => void }) {
   const router = useRouter();
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState<CreateEventRequest & { startTimeLocal: string; endTimeLocal: string }>({
+  const [form, setForm] = useState<Omit<CreateEventRequest, 'imageUrl'> & { startTimeLocal: string; endTimeLocal: string }>({
     title: '',
     description: '',
     eventType: 'SEMINAR',
@@ -49,13 +51,31 @@ function CreateEventForm({ onCreated }: { onCreated: (id: string) => void }) {
     startTimeLocal: '',
     endTimeLocal: '',
     maxAttendees: undefined,
-    imageUrl: '',
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const set = (field: string, value: unknown) =>
     setForm(prev => ({ ...prev, [field]: value }));
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      setError(`Cover image must be under ${MAX_SIZE_MB}MB.`);
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    e.target.value = '';
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +86,14 @@ function CreateEventForm({ onCreated }: { onCreated: (id: string) => void }) {
     }
     setSubmitting(true);
     try {
+      let imageUrl: string | undefined;
+      if (imageFile) {
+        const { storageService } = await import('@/lib/storage');
+        imageUrl = await storageService.uploadFile(
+          `events/${Date.now()}_${imageFile.name}`,
+          imageFile,
+        );
+      }
       const payload: CreateEventRequest = {
         title:        form.title,
         description:  form.description,
@@ -76,7 +104,7 @@ function CreateEventForm({ onCreated }: { onCreated: (id: string) => void }) {
         startTime:    new Date(form.startTimeLocal).toISOString(),
         endTime:      new Date(form.endTimeLocal).toISOString(),
         maxAttendees: form.maxAttendees || undefined,
-        imageUrl:     form.imageUrl || undefined,
+        imageUrl,
       };
       const event = await eventApi.createEvent(payload);
       onCreated(event.id);
@@ -206,6 +234,47 @@ function CreateEventForm({ onCreated }: { onCreated: (id: string) => void }) {
                 />
               </div>
 
+              {/* Cover image */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Cover Image</label>
+                {imagePreview ? (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Cover preview"
+                      className="w-full object-cover rounded-lg max-h-48"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm leading-none transition-colors"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-gray-200 rounded-lg px-3 py-6 text-sm text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors flex flex-col items-center gap-1"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    Click to upload cover image
+                  </button>
+                )}
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+              </div>
+
               {error && <p className="text-sm text-red-500">{error}</p>}
 
               <div className="flex gap-3 pt-2">
@@ -220,7 +289,7 @@ function CreateEventForm({ onCreated }: { onCreated: (id: string) => void }) {
                   disabled={submitting}
                   className="flex-1 py-2 text-sm bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
-                  {submitting ? 'Creating…' : 'Create Event'}
+                  {submitting ? (imageFile ? 'Uploading…' : 'Creating…') : 'Create Event'}
                 </button>
               </div>
             </form>
