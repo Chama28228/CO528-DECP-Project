@@ -17,7 +17,7 @@ tasks:
 
   up:
     desc: Start all services detached (local Postgres)
-    cmd: docker compose -f {{.INFRA_DC}} -f {{.APPS_DC}} up -d
+    cmd: docker compose -f {{.INFRA_DC}} -f {{.APPS_DC}} --env-file web/.env.local up -d
 
   up:prod:
     desc: Start all services with Neon DBs (.env.prod injected)
