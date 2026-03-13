@@ -35,6 +35,68 @@ tasks:
     desc: Start infrastructure only (Postgres + RabbitMQ)
     cmd: docker compose -f {{.INFRA_DC}} up -d
 
+  # ── Kubernetes (Kind) ───────────────────────────────────────────
+
+  k8s:cluster-create:
+    desc: Create the Kind cluster with port 80/443 mapped to host
+    cmds:
+      - kind create cluster --name decp --config deployment/k8s/kind-config.yaml
+      - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+      - kubectl rollout status deployment/ingress-nginx-controller --namespace ingress-nginx --timeout=120s
+
+  k8s:cluster-delete:
+    desc: Delete the Kind cluster
+    cmd: kind delete cluster --name decp
+
+  k8s:cluster-recreate:
+    desc: Delete and recreate the Kind cluster, then load images and deploy everything
+    cmds:
+      - task: k8s:cluster-delete
+      - task: k8s:cluster-create
+      - task: k8s:load
+      - task: k8s:deploy
+
+  k8s:build-web:
+    desc: Build web image for Kind (bakes in http://localhost as API URL, read from web/.env.k8s)
+    cmd: >
+      docker compose -f {{.INFRA_DC}} -f {{.APPS_DC}}
+      --env-file web/.env.local
+      --env-file web/.env.k8s
+      build web
+
+  k8s:load:
+    desc: Load all Docker images into the Kind cluster
+    cmds:
+      - kind load docker-image decp-api-gateway:latest --name decp
+      - kind load docker-image decp-user-service:latest --name decp
+      - kind load docker-image decp-post-service:latest --name decp
+      - kind load docker-image decp-job-service:latest --name decp
+      - kind load docker-image decp-event-service:latest --name decp
+      - kind load docker-image decp-notification-service:latest --name decp
+      - kind load docker-image decp-web:latest --name decp
+
+  k8s:deploy:
+    desc: Apply all Kubernetes manifests
+    cmds:
+      - kubectl apply -f deployment/k8s/namespace.yaml
+      - kubectl apply -f deployment/k8s/configmap.yaml
+      - kubectl apply -f deployment/k8s/secrets.yaml
+      - kubectl apply -f deployment/k8s/rabbitmq/
+      - kubectl apply -f deployment/k8s/api-gateway/
+      - kubectl apply -f deployment/k8s/user-service/
+      - kubectl apply -f deployment/k8s/post-service/
+      - kubectl apply -f deployment/k8s/job-service/
+      - kubectl apply -f deployment/k8s/event-service/
+      - kubectl apply -f deployment/k8s/notification-service/
+      - kubectl apply -f deployment/k8s/web/
+      - kubectl apply -f deployment/k8s/ingress.yaml
+
+  k8s:status:
+    desc: Show status of all pods and services in the decp namespace
+    cmds:
+      - kubectl get pods -n decp
+      - kubectl get svc -n decp
+
   # ── Local Spring Boot — all services ────────────────────────────
 
   run:all:
