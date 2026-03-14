@@ -1,3 +1,4 @@
+# ConfigMap — non-sensitive configuration for all services.
 apiVersion: v1
 kind: ConfigMap
 metadata:
