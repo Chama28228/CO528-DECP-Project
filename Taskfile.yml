@@ -149,6 +149,10 @@ tasks:
       - kubectl get pods -n decp
       - kubectl get svc -n decp
 
+  gke:logs:
+    desc: "Follow logs for a GKE service  →  task gke:logs -- user-service"
+    cmd: kubectl logs -n decp deployment/{{.CLI_ARGS}} --follow
+
   gke:destroy:
     desc: Delete the GKE cluster via Terraform (stops billing)
     dir: deployment/terraform
