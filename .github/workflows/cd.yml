@@ -102,6 +102,6 @@ jobs:
 
       - name: Wait for rollout
         run: |
-          kubectl rollout status deployment/api-gateway          -n ${{ env.GKE_NAMESPACE }} --timeout=300s
-          kubectl rollout status deployment/user-service         -n ${{ env.GKE_NAMESPACE }} --timeout=300s
-          kubectl rollout status deployment/web                  -n ${{ env.GKE_NAMESPACE }} --timeout=300s
+          for svc in api-gateway user-service post-service job-service event-service notification-service web; do
+            kubectl rollout status deployment/$svc -n ${{ env.GKE_NAMESPACE }} --timeout=600s
+          done
