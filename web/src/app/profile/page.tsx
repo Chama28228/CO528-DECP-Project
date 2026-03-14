@@ -121,6 +121,7 @@ export default function ProfilePage() {
 
                   <h1 className="text-2xl font-bold text-gray-900">{profile.name}</h1>
                   <div className="flex items-center gap-3 mt-1">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     <RoleBadge role={profile.role as any} roleBadge={profile.roleBadge as any} />
                     {profile.department && (
                       <span className="text-sm text-gray-500">{profile.department}</span>
@@ -215,7 +216,7 @@ export default function ProfilePage() {
 
                       {jobs.length === 0 ? (
                         <div className="text-center py-10 bg-white rounded-xl border border-gray-200">
-                          <p className="text-gray-400 text-sm">You haven't posted any jobs yet.</p>
+                          <p className="text-gray-400 text-sm">You haven&apos;t posted any jobs yet.</p>
                         </div>
                       ) : (
                         jobs.map(job => (
